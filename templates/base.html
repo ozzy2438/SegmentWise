@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Müşteri Segmentasyon & Analiz Aracı{% endblock %}</title>
+    <title>{% block title %}Customer Segmentation & Analysis Tool{% endblock %}</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
+    <!-- Bootstrap İkonlar -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Google Fonts -->
+    <!-- Google Yazı Tipleri -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Plotly.js -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- D3.js for advanced visualizations -->
+    <!-- D3.js için gelişmiş görselleştirmeler -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         :root {
@@ -386,81 +386,201 @@
             transform: scale(1.1);
             box-shadow: 0 6px 15px rgba(0,0,0,0.3);
         }
+        
+        /* Ek küçük ekran stilleri */
+        @media (max-width: 768px) {
+            .app-header {
+                padding: 20px 0;
+            }
+            
+            .app-brand {
+                font-size: 1.8rem;
+            }
+            
+            .app-tagline {
+                font-size: 1rem;
+            }
+            
+            .stat-card {
+                min-width: 100%;
+            }
+            
+            .card-header,
+            .card-body {
+                padding: 15px 20px;
+            }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <header class="app-header">
         <div class="container">
-            <img src="https://cdn0.iconfinder.com/data/icons/data-science-2-1/66/118-512.png" alt="Logo" class="app-logo">
-            <h1 class="app-brand">Akıllı Müşteri Segmentasyonu ve Veri Analizi Platformu</h1>
-            <p class="app-tagline">Gelişmiş veri bilimi teknikleri ile müşterilerinizi anlamanızı sağlar</p>
+            <div class="app-branding">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="app-logo" onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/default-logo.png') }}';">
+                <h1 class="app-brand">Customer Segmentation Analysis</h1>
+                <p class="app-tagline">Make smarter marketing decisions with your data</p>
+            </div>
+            
+            <div class="app-actions mt-4">
+                <a href="/" class="btn btn-light me-2">
+                    <i class="bi bi-house-door me-1"></i> Home
+                </a>
+                <a href="#" data-bs-toggle="modal" data-bs-target="#helpModal" class="btn btn-outline-light">
+                    <i class="bi bi-question-circle me-1"></i> Help
+                </a>
+            </div>
         </div>
     </header>
 
-    <main class="container mt-4 mb-5">
+    <main class="container py-4">
+        <!-- Flash mesajlar -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash-message alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        <i class="bi {% if category == 'success' %}bi-check-circle{% elif category == 'danger' %}bi-exclamation-triangle{% elif category == 'warning' %}bi-exclamation-circle{% else %}bi-info-circle{% endif %} me-2"></i>
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show flash-message" role="alert">
+                            <div class="d-flex align-items-center">
+                                {% if category == 'success' %}
+                                    <i class="bi bi-check-circle-fill me-2 fs-4"></i>
+                                {% elif category == 'danger' %}
+                                    <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
+                                {% elif category == 'warning' %}
+                                    <i class="bi bi-exclamation-circle-fill me-2 fs-4"></i>
+                                {% else %}
+                                    <i class="bi bi-info-circle-fill me-2 fs-4"></i>
+                                {% endif %}
+                                
+                                <div>
+                                    <strong>{{ category|capitalize }}</strong>
+                                    <p class="mb-0">{{ message }}</p>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
         {% endwith %}
         
+        <!-- Ana içerik bloğu -->
         {% block content %}{% endblock %}
     </main>
-    
-    <footer class="app-footer">
-        <div class="container">
-            <p class="mb-1">Akıllı Müşteri Segmentasyonu</p>
-            <p class="mb-0 small">Gelişmiş veri analizi ve yapay zeka destekli pazarlama önerileri</p>
-            <div class="mt-3">
-                <a href="#" class="me-3"><i class="bi bi-github"></i> GitHub</a>
-                <a href="#" class="me-3"><i class="bi bi-linkedin"></i> LinkedIn</a>
-                <a href="#"><i class="bi bi-envelope"></i> İletişim</a>
-            </div>
-            <p class="mt-3 small">© 2025 Müşteri Analiz Platformu. Tüm hakları saklıdır.</p>
-        </div>
-    </footer>
-    
-    <button type="button" class="dark-mode-toggle" id="darkModeToggle">
-        <i class="bi bi-moon-fill"></i>
-    </button>
 
-    <!-- Bootstrap Bundle with Popper -->
+    <footer class="container mt-5 pt-4 border-top text-center">
+        <p class="text-muted">
+            &copy; 2025 Customer Segmentation Analysis | <a href="#" class="text-decoration-none">Privacy Policy</a> | 
+            <a href="#" class="text-decoration-none">Terms of Use</a>
+        </p>
+    </footer>
+
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Tooltips initialization
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-        
-        // Dark mode functionality (for future implementation)
-        document.getElementById('darkModeToggle').addEventListener('click', function() {
-            alert('Karanlık mod yakında eklenecek!');
-        });
-        
-        // Animate all progress bars on scroll
-        window.addEventListener('DOMContentLoaded', (event) => {
-            // Add fade-in effect to segment boxes
-            const segmentBoxes = document.querySelectorAll('.segment-box');
-            segmentBoxes.forEach((box, index) => {
-                box.style.opacity = '0';
-                box.style.transform = 'translateY(20px)';
-                box.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                setTimeout(() => {
-                    box.style.opacity = '1';
-                    box.style.transform = 'translateY(0)';
-                }, 100 * index);
-            });
-        });
-    </script>
-    {% block extra_js %}{% endblock %}
+    
+    <!-- Yardım Modalı -->
+    <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="helpModalLabel">
+                        <i class="bi bi-question-circle me-2"></i> How to Use
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="p-3 border rounded h-100">
+                                <h5><i class="bi bi-file-earmark-text me-2 text-primary"></i>Data Requirements</h5>
+                                <ul class="list-unstyled ps-4">
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle-fill me-2 text-success"></i>
+                                        Upload your customer data in CSV format
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle-fill me-2 text-success"></i>
+                                        Your file should contain customer ID, date and amount
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle-fill me-2 text-success"></i>
+                                        Demographic data is optional but recommended
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="p-3 border rounded h-100">
+                                <h5><i class="bi bi-graph-up me-2 text-primary"></i>Analysis Process</h5>
+                                <ul class="list-unstyled ps-4">
+                                    <li class="mb-2">
+                                        <i class="bi bi-1-circle-fill me-2 text-primary"></i>
+                                        Data is uploaded and cleaned
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-2-circle-fill me-2 text-primary"></i>
+                                        Segmentation is performed with K-Means
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-3-circle-fill me-2 text-primary"></i>
+                                        Recommendations are created for each segment
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-2 mb-3">
+                        <i class="bi bi-question-circle-fill me-2 text-primary"></i>Frequently Asked Questions
+                    </h5>
+                    
+                    <div class="accordion" id="faqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqOne">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                    How is the number of segments determined?
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="faqOne" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    You can determine the number of segments yourself or allow the system to automatically find the optimal number of segments. The system calculates the optimal number of clusters using the Silhouette Score and Elbow Method.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    What data is required for the best results?
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="faqTwo" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    It is recommended to have the following data: customer ID, order date, order amount, and possible demographic data (age, gender, location, etc.). The system performs RFM (Recency, Frequency, Monetary) analysis to improve the quality of segmentation.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                    How are recommendations created?
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="faqThree" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    The system analyzes the characteristics of each segment and creates personalized marketing strategies, communication channels, and campaign recommendations using artificial intelligence. These recommendations are based on the segment's shopping behavior, demographic characteristics, and other features.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- İlave scriptler -->
+    {% block scripts %}{% endblock %}
 </body>
 </html>
 

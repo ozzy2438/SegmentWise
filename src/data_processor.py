@@ -71,22 +71,22 @@ def clean_data(df, detected_cols):
         if col_name in df.columns:
             # Sayısal kolonları temizle
             if pd.api.types.is_numeric_dtype(df[col_name]):
-                median_val = df[col_name].median()
-                df[col_name] = df[col_name].fillna(median_val)
+                # Daha güvenli temizleme - medyan değeri ile doldurmak yerine 0 ile doldur
+                df[col_name] = df[col_name].fillna(0)
                 
             # Kategorik kolonları temizle
             elif pd.api.types.is_object_dtype(df[col_name]): 
-                mode_val = df[col_name].mode()
-                if not mode_val.empty:
-                    df[col_name] = df[col_name].fillna(mode_val[0])
+                # En yaygın değer yerine boş string ile doldur
+                df[col_name] = df[col_name].fillna("")
             
             # Tarih sütunu işlemleri
             if col_key == 'transaction_date':
-                # Önceki tarih değerlerini yedekle
-                original_dates = df[col_name].copy()
-                
-                # Tarihleri dönüştür
+                # Tarihleri dönüştürmeye çalış, ancak hata durumunda orijinal değerleri koru
                 try:
+                    # Önceki tarih değerlerini yedekle
+                    original_dates = df[col_name].copy()
+                    
+                    # Tarihleri dönüştür
                     df[col_name] = pd.to_datetime(df[col_name], errors='coerce')
                     
                     # Dönüşüm sonrası NaN oranı çok yüksekse geri al
@@ -106,42 +106,34 @@ def clean_data(df, detected_cols):
                 df[col_name] = df[col_name].astype(str).str.replace(r'[$,€£,]', '', regex=True)
                 df[col_name] = pd.to_numeric(df[col_name], errors='coerce')
                 
-                # Boş değerleri doldur
-                median_val = df[col_name].median()
-                if pd.notna(median_val):
-                    df[col_name] = df[col_name].fillna(median_val)
+                # Boş değerleri 0 ile doldur (daha güvenli yaklaşım)
+                df[col_name] = df[col_name].fillna(0)
             except Exception as e:
                 print(f"Amount conversion error: {e}")
+                # Hata durumunda tüm sütunu 0 olarak ayarla - en azından sayısal veri olur
+                df[col_name] = 0
 
-    # ÖNEMLİ: Agresif filtreleme yapmadan önce son durumu kontrol et
-    print(f"Data shape after basic cleaning: {df.shape}")
+    # ÖNEMLİ DEĞİŞİKLİK: Hiçbir satırı silmiyoruz, temizleme satır kaybı olmadan yapılıyor
+    print(f"Data shape after cleaning: {df.shape}")
     
-    # Müşteri ID'sini temizle, bu kritik bir işlem olabilir
+    # Müşteri ID kontrolü - eksik ID'ler için otomatik ID oluştur
     if 'customer_id' in detected_cols and detected_cols['customer_id'] in df.columns:
-        # Kaç kayıt etkilenecek bakalım
-        missing_ids = df[detected_cols['customer_id']].isna().sum()
-        if missing_ids > 0 and missing_ids < df.shape[0] * 0.3:  # %30'dan az kayıp varsa
-            df = df.dropna(subset=[detected_cols['customer_id']])
-            print(f"Removed {missing_ids} rows with missing customer IDs")
-            # ID'yi string yap
-            df[detected_cols['customer_id']] = df[detected_cols['customer_id']].astype(str)
+        # Null ID'leri kontrol et
+        null_ids = df[detected_cols['customer_id']].isna()
+        if null_ids.any():
+            # Eksik ID'ler için otomatik ID oluştur
+            auto_ids = [f'auto_id_{i}' for i in range(null_ids.sum())]
+            df.loc[null_ids, detected_cols['customer_id']] = auto_ids
+            print(f"Generated {len(auto_ids)} automatic IDs for missing customer IDs")
+        
+        # ID'yi string yap
+        df[detected_cols['customer_id']] = df[detected_cols['customer_id']].astype(str)
     
-    # Son durumu kontrol et
-    print(f"Data shape after all cleaning steps: {df.shape}")
-    
-    # Veri boşsa en basit temizleme ile tekrar dene
+    # Veri işleme sonrası boş olma kontrolü
     if df.empty:
-        print("WARNING: Cleaning resulted in empty dataframe, using minimum cleaning")
-        df = df_original.copy()
+        print("WARNING: Cleaning resulted in empty dataframe, using original data")
+        return df_original
         
-        # Sadece kritik sütunlardaki çok kötü değerleri (None, NaN) temizle
-        for col_name in df.columns:
-            if col_name in [detected_cols.get('amount'), detected_cols.get('quantity')]:
-                if pd.api.types.is_numeric_dtype(df[col_name]):
-                    df[col_name] = df[col_name].fillna(0)  # Sayısal değerleri 0 ile doldur
-        
-        print(f"After minimal cleaning: {df.shape}")
-    
     return df
 
 def calculate_rfm(df, detected_cols):
