@@ -1,11 +1,11 @@
-# SegmentWise: Akıllı Müşteri Segmentasyon Platformu
+# SegmentWise: Intelligent Customer Segmentation Platform
 
 <p align="center">
   <img src="img/segmentwise_logo.png" alt="SegmentWise Logo" width="200"/>
 </p>
 
 <p align="center">
-  <b>Müşteri verilerinizden otomatik segmentler oluşturun ve yapay zeka destekli pazarlama stratejileri geliştirin</b>
+  <b>Create automatic segments from your customer data and develop AI-powered marketing strategies</b>
 </p>
 
 <p align="center">
@@ -16,131 +16,131 @@
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"/>
 </p>
 
-## 📊 Proje Tanıtımı
+## 📊 Project Overview
 
-SegmentWise, işletmelerin müşteri verilerini otomatik olarak analiz ederek anlamlı müşteri segmentleri oluşturan, her segment için yapay zeka destekli pazarlama stratejileri sunan ve görsel veri analizleri sağlayan kapsamlı bir platformdur.
+SegmentWise is a comprehensive platform that automatically analyzes customer data to create meaningful customer segments, provides AI-powered marketing strategies for each segment, and delivers visual data analyses.
 
-### ✨ Demo Görüntüleri
+### ✨ Demo Screenshots
 
 <p align="center">
   <img src="img/dashboard.png" alt="SegmentWise Dashboard" width="800"/>
   <br/>
-  <em>Ana Dashboard: Segmentler ve Pazarlama Stratejileri</em>
+  <em>Main Dashboard: Segments and Marketing Strategies</em>
 </p>
 
 <p align="center">
-  <img src="img/segments.png" alt="Segment Analizi" width="800"/>
+  <img src="img/segments.png" alt="Segment Analysis" width="800"/>
   <br/>
-  <em>Segment Detayları ve Dağılım Analizleri</em>
+  <em>Segment Details and Distribution Analysis</em>
 </p>
 
-## 🚀 Temel Özellikler
+## 🚀 Key Features
 
-- **🔍 Otomatik Veri Algılama**: CSV dosyalarından otomatik olarak ilgili müşteri verilerini tespit eder
-- **🧹 Akıllı Veri Temizleme**: Eksik verileri otomatik doldurma ve hatalı verileri filtreleme
-- **📊 Dinamik Segmentasyon**: K-means algoritması kullanarak en optimal segment sayısını belirler
-- **📈 İnteraktif Grafikler**: Segmentlerin dağılımı ve karakteristik özellikleri için görselleştirmeler
-- **🤖 AI Pazarlama Önerileri**: Her segment için OpenAI API kullanarak özel pazarlama stratejileri
-- **📱 Duyarlı Tasarım**: Farklı cihazlarda sorunsuz çalışan modern arayüz
+- **🔍 Automatic Data Detection**: Automatically identifies relevant customer data from CSV files
+- **🧹 Smart Data Cleaning**: Auto-fills missing data and filters erroneous data
+- **📊 Dynamic Segmentation**: Determines the optimal number of segments using K-means algorithm
+- **📈 Interactive Charts**: Visualizations for segment distribution and characteristic features
+- **🤖 AI Marketing Recommendations**: Custom marketing strategies for each segment using OpenAI API
+- **📱 Responsive Design**: Modern interface that works seamlessly on different devices
 
-## 🛠️ Teknolojiler
+## 🛠️ Technologies
 
 - **Backend**: Python, Flask, Pandas, NumPy, scikit-learn
 - **Frontend**: HTML5, CSS3, JavaScript, Bootstrap 5
-- **Veri Görselleştirme**: Plotly, Seaborn
-- **Yapay Zeka**: OpenAI GPT API entegrasyonu
+- **Data Visualization**: Plotly, Seaborn
+- **Artificial Intelligence**: OpenAI GPT API integration
 
-## ⚙️ Kurulum
+## ⚙️ Installation
 
-### Ön Gereksinimler
+### Prerequisites
 
-- Python 3.8 veya üzeri
-- pip (Python paket yöneticisi)
-- OpenAI API anahtarı (isteğe bağlı)
+- Python 3.8 or higher
+- pip (Python package manager)
+- OpenAI API key (optional)
 
-### Adım Adım Kurulum
+### Step-by-Step Setup
 
-1. Projeyi klonlayın:
+1. Clone the project:
    ```
    git clone https://github.com/ozzy2438/SegmentWise.git
    cd SegmentWise
    ```
 
-2. Sanal ortam oluşturun ve aktifleştirin:
+2. Create and activate a virtual environment:
    ```
    python -m venv venv
-   source venv/bin/activate  # Linux/Mac için
-   venv\Scripts\activate     # Windows için
+   source venv/bin/activate  # For Linux/Mac
+   venv\Scripts\activate     # For Windows
    ```
 
-3. Gerekli paketleri yükleyin:
+3. Install required packages:
    ```
    pip install -r requirements.txt
    ```
 
-4. (İsteğe bağlı) OpenAI API entegrasyonu için `.env` dosyası oluşturun:
+4. (Optional) Create a `.env` file for OpenAI API integration:
    ```
    touch .env
-   echo "OPENAI_API_KEY=sizin_api_anahtarınız" >> .env
+   echo "OPENAI_API_KEY=your_api_key" >> .env
    ```
 
-5. Uygulamayı başlatın:
+5. Start the application:
    ```
    python src/app.py
    ```
 
-6. Tarayıcınızda şu adresi açın: `http://localhost:8080`
+6. Open the following address in your browser: `http://localhost:8080`
 
-## 📊 Kullanım Kılavuzu
+## 📊 User Guide
 
-### 1. Veri Yükleme ve Segmentasyon
+### 1. Data Upload and Segmentation
 
-1. Ana sayfada "CSV Yükle" butonuna tıklayın
-2. Müşteri verilerinizi içeren CSV dosyasını seçin
-3. İstediğiniz segment sayısını seçin veya otomatik belirleme için boş bırakın
-4. "Analiz Başlat" butonuna tıklayarak segmentasyon işlemini başlatın
+1. Click the "Upload CSV" button on the main page
+2. Select the CSV file containing your customer data
+3. Choose the number of segments you want or leave it blank for automatic determination
+4. Click the "Start Analysis" button to begin the segmentation process
 
-### 2. Segmentleri İnceleme
+### 2. Exploring Segments
 
-- Oluşturulan her segment için detaylı profiller görüntülenir
-- Demografik ve davranışsal özellikler grafik ve tablolarla sunulur
-- Segment dağılımları ve büyüklükleri görsel olarak gösterilir
+- Detailed profiles are displayed for each created segment
+- Demographic and behavioral characteristics are presented with charts and tables
+- Segment distributions and sizes are visually displayed
 
-### 3. Pazarlama Stratejileri
+### 3. Marketing Strategies
 
-- Her segment için AI tarafından önerilen:
-  - Kampanya fikirleri
-  - İletişim kanalları
-  - Özel teklifler ve indirimler
-  - Strateji gerekçeleri
+- AI-recommended for each segment:
+  - Campaign ideas
+  - Communication channels
+  - Special offers and discounts
+  - Strategy rationales
 
-## 📋 Proje Yapısı
+## 📋 Project Structure
 
 ```
 SegmentWise/
-├── src/                  # Kaynak kodları
-│   ├── app.py            # Flask uygulaması ve route'lar
-│   ├── data_processor.py # Veri işleme ve temizleme
-│   ├── segmentation.py   # Segment oluşturma algoritmaları
-│   └── recommendation.py # OpenAI API entegrasyonu
-├── templates/            # HTML şablonları  
-├── static/               # CSS, JS ve görseller
-├── uploads/              # Yüklenen CSV dosyaları
-├── requirements.txt      # Bağımlılıklar
-└── README.md             # Proje dokümantasyonu
+├── src/                  # Source code
+│   ├── app.py            # Flask application and routes
+│   ├── data_processor.py # Data processing and cleaning
+│   ├── segmentation.py   # Segment creation algorithms
+│   └── recommendation.py # OpenAI API integration
+├── templates/            # HTML templates  
+├── static/               # CSS, JS and visuals
+├── uploads/              # Uploaded CSV files
+├── requirements.txt      # Dependencies
+└── README.md             # Project documentation
 ```
 
-## 🤝 Katkıda Bulunma
+## 🤝 Contributing
 
-Katkılarınızı bekliyoruz! Özellik istekleri, hata raporları veya pull request'ler için GitHub üzerinden iletişime geçebilirsiniz.
+We welcome your contributions! Please reach out via GitHub for feature requests, bug reports, or pull requests.
 
-## 📜 Lisans
+## 📜 License
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasını inceleyebilirsiniz.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## 🙏 Teşekkürler
+## 🙏 Acknowledgements
 
-Bu proje aşağıdaki açık kaynak kütüphanelerinin yardımıyla geliştirilmiştir:
+This project was developed with the help of the following open source libraries:
 - [Flask](https://flask.palletsprojects.com/)
 - [scikit-learn](https://scikit-learn.org/)
 - [Pandas](https://pandas.pydata.org/)
@@ -150,6 +150,6 @@ Bu proje aşağıdaki açık kaynak kütüphanelerinin yardımıyla geliştirilm
 ---
 
 <p align="center">
-  <a href="https://linkedin.com/in/your-linkedin-profile">LinkedIn'de bağlantı kurun</a> • 
-  <a href="mailto:your-email@example.com">İletişim</a>
+  <a href="https://linkedin.com/in/your-linkedin-profile">Connect on LinkedIn</a> • 
+  <a href="mailto:your-email@example.com">Contact</a>
 </p> 
