@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Upload CSV - Customer Segmentation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1 class="text-center mb-4">Customer Segmentation & Recommendation Tool</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">Upload CSV File</div>
+            <div class="card-body">
+                <p class="card-text">Upload your customer data in CSV format. The system will automatically detect relevant columns (like CustomerID, TransactionDate, Amount, Age, etc.), perform segmentation, and generate marketing recommendations.</p>
+                <form method="post" enctype="multipart/form-data" action="{{ url_for("upload_and_process") }}">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Choose CSV file</label>
+                        <input class="form-control" type="file" id="file" name="file" accept=".csv" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload and Process</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Results will be displayed here later -->
+        <div id="results-area">
+            {% if results %}
+                {% include "results_display.html" %}
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+

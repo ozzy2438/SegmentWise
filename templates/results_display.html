@@ -1,0 +1,178 @@
+{# templates/results_display.html #}
+
+<div class="mt-5">
+    <h2>Processing Results</h2>
+    
+    <div class="alert alert-info" role="alert">
+        <h4 class="mb-2"><i class="bi bi-graph-up"></i> Müşteri Segmentasyon Analizi Tamamlandı</h4>
+        <p class="mb-0">Toplam <strong>{{ results.get("total_customers", "N/A") }}</strong> müşteri <strong>{{ results.get("k", "N/A") }}</strong> farklı segmente ayrıldı.</p>
+    </div>
+
+    <div class="mb-4 p-3 bg-light rounded">
+        <h5 class="text-primary"><i class="bi bi-info-circle"></i> Segmentasyon Özeti</h5>
+        <p>Müşterileriniz satın alma davranışları, konum ve diğer kriterlere göre aşağıdaki segmentlere ayrılmıştır. Her segment için özel pazarlama stratejileri ve öneriler aşağıda sunulmuştur.</p>
+    </div>
+
+    <h3 class="mt-4 mb-4 text-center">Segment Detayları & Öneriler</h3>
+
+    <div class="row">
+        {% for segment_id, profile in results.get("profiles", {}).items() %}
+        <div class="col-md-6 mb-4">
+            <div class="segment-box card h-100 shadow-sm border-{% if segment_id % 8 == 0 %}primary{% elif segment_id % 8 == 1 %}success{% elif segment_id % 8 == 2 %}danger{% elif segment_id % 8 == 3 %}warning{% elif segment_id % 8 == 4 %}info{% elif segment_id % 8 == 5 %}dark{% elif segment_id % 8 == 6 %}secondary{% else %}primary{% endif %}">
+                <div class="card-header bg-{% if segment_id % 8 == 0 %}primary{% elif segment_id % 8 == 1 %}success{% elif segment_id % 8 == 2 %}danger{% elif segment_id % 8 == 3 %}warning{% elif segment_id % 8 == 4 %}info{% elif segment_id % 8 == 5 %}dark{% elif segment_id % 8 == 6 %}secondary{% else %}primary{% endif %} text-white">
+                    <h4 class="mb-0"><i class="bi bi-people-fill me-2"></i>Segment {{ segment_id }}</h4>
+        </div>
+        <div class="card-body">
+                    <div class="badge bg-secondary mb-3">{{ profile.get("size", "N/A") }} müşteri</div>
+            
+                    {% if profile.get("numeric_summary") %}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Ortalama Özellikler</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <tbody>
+                {% for key, value in profile.numeric_summary.items() %}
+                                        <tr>
+                                            <td><strong>{{ key }}</strong></td>
+                                            <td class="text-end">{{ value }}</td>
+                                        </tr>
+                {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+            {% endif %}
+
+                    {% if profile.get("categorical_summary") %}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Demografik/Davranışsal Özellikler</h5>
+                        </div>
+                        <div class="card-body">
+                {% for key, values in profile.categorical_summary.items() %}
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">{{ key }}</h6>
+                    {% for val, pct in values.items() %}
+                                <div class="mb-1">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>{{ val }}</span>
+                                        <span class="badge bg-secondary">{{ "%.1f"|format(pct*100) }}%</span>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar {% if segment_id % 8 == 0 %}bg-primary{% elif segment_id % 8 == 1 %}bg-success{% elif segment_id % 8 == 2 %}bg-danger{% elif segment_id % 8 == 3 %}bg-warning{% elif segment_id % 8 == 4 %}bg-info{% elif segment_id % 8 == 5 %}bg-dark{% elif segment_id % 8 == 6 %}bg-secondary{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ pct*100 }}%"></div>
+                                    </div>
+                                </div>
+                    {% endfor %}
+                            </div>
+                {% endfor %}
+                        </div>
+                    </div>
+            {% endif %}
+
+            {# Placeholder for Plotly chart - data needs to be passed from Flask #}
+                    {% if results.get("plots") and results.plots.get(segment_id) %}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Segment Görselleştirmesi</h5>
+                        </div>
+                        <div class="card-body p-2">
+                            <div id="plot-{{ segment_id }}" class="plotly-chart" style="height: 300px;"></div>
+            <script>
+                var plotData_{{ segment_id }} = {{ results.plots[segment_id]|safe }};
+                                Plotly.newPlot("plot-{{ segment_id }}", plotData_{{ segment_id }}.data, plotData_{{ segment_id }}.layout);
+            </script>
+                        </div>
+                    </div>
+            {% endif %}
+
+                    {% set recommendation = results.get("recommendations", {}).get(segment_id) %}
+            {% if recommendation %}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Pazarlama Önerileri (AI)</h5>
+                        </div>
+                        {% if recommendation.get("error") %}
+                            <div class="card-body">
+                                <div class="alert alert-warning mb-0">Öneriler oluşturulurken hata: {{ recommendation.error }}</div>
+                            </div>
+            {% else %}
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <h6 class="text-primary"><i class="bi bi-megaphone me-2"></i>Kampanya Fikri</h6>
+                                    <p class="mb-0">{{ recommendation.get("campaign", "N/A") }}</p>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="card mb-2 bg-light">
+                                            <div class="card-body p-2">
+                                                <h6 class="mb-1"><i class="bi bi-broadcast me-2"></i>İletişim Kanalı</h6>
+                                                <p class="mb-0 small">{{ recommendation.get("channel", "N/A") }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card mb-2 bg-light">
+                                            <div class="card-body p-2">
+                                                <h6 class="mb-1"><i class="bi bi-gift me-2"></i>Önerilen Teklif</h6>
+                                                <p class="mb-0 small">{{ recommendation.get("offer", "N/A") }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6 class="text-muted"><i class="bi bi-chat-quote me-2"></i>Gerekçe</h6>
+                                    <p>{{ recommendation.get("rationale", "N/A") }}</p>
+                                </div>
+                                
+                                <div class="alert alert-info mb-0">
+                                    <h6 class="mb-1"><i class="bi bi-robot me-2"></i>AI Yorumu</h6>
+                                    <p class="mb-0 fst-italic">{{ recommendation.get("openai_comment", "N/A") }}</p>
+                                </div>
+                            </div>
+            {% endif %}
+                    </div>
+            {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Bu segment için öneri bulunmamaktadır.
+                    </div>
+            {% endif %}
+
+                </div>
+        </div>
+    </div>
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>Segment profili bulunamadı.
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+    
+    <div class="card mt-4 mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="bi bi-stars me-2"></i>Pazarlama Stratejisi Özeti</h4>
+        </div>
+        <div class="card-body">
+            <p>Bu segmentasyon analizi sonucunda, müşterilerinizi {{ results.get("k", "N/A") }} farklı gruba ayırdık. Her segment için özel pazarlama stratejileri ve öneriler yukarıda sunulmuştur.</p>
+            
+            <div class="alert alert-success">
+                <h5><i class="bi bi-check-circle me-2"></i>Sonraki Adımlar</h5>
+                <ol class="mb-0">
+                    <li>Her segment için önerilen kampanyaları inceleyin</li>
+                    <li>Müşteri iletişim stratejilerinizi segmentlere göre özelleştirin</li>
+                    <li>Ürün önerilerini ve teklifleri segmentlere göre değiştirin</li>
+                    <li>Pazarlama bütçenizi en değerli segmentlere öncelik vererek planlayın</li>
+                    <li>Yeni segmentlerin oluşumu için düzenli olarak analizi tekrarlayın</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
