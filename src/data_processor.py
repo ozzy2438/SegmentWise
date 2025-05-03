@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import re
 from datetime import datetime
+import os  # import was missing
 
 # --- Column Name Mapping --- 
 # Define potential variations for key columns
@@ -41,18 +42,17 @@ def detect_columns(df):
                 detected_cols[key] = normalized_df_cols[normalized_name]
                 break # Found the column for this key, move to the next key
     
-    # Basic validation (e.g., check if essential columns for RFM are found if needed)
-    # This can be expanded later
     print(f"Detected columns: {detected_cols}") # For debugging
     return detected_cols
 
 def load_csv(filepath):
     """Loads a CSV file into a pandas DataFrame."""
     try:
-        df = pd.read_csv(filepath, encoding='utf-8')
+        # Performans iyileştirmesi: low_memory=False ekleyelim ve dtype karışık mesajını önleyelim
+        df = pd.read_csv(filepath, encoding='utf-8', low_memory=False)
     except UnicodeDecodeError:
         try:
-            df = pd.read_csv(filepath, encoding='latin1')
+            df = pd.read_csv(filepath, encoding='latin1', low_memory=False)
         except Exception as e:
             raise ValueError(f"Could not read CSV file: {e}")
     except Exception as e:
@@ -61,46 +61,100 @@ def load_csv(filepath):
 
 def clean_data(df, detected_cols):
     """Performs basic data cleaning."""
-    # Handle missing values (simple strategy: fill numeric with median, categorical with mode)
+    print(f"Starting data cleaning, initial shape: {df.shape}")
+    
+    # Öncelikle kopyalayalım, çok agresif temizleme durumunda geri dönebilmek için
+    df_original = df.copy()
+
+    # Temel temizleme işlemleri
     for col_key, col_name in detected_cols.items():
         if col_name in df.columns:
+            # Sayısal kolonları temizle
             if pd.api.types.is_numeric_dtype(df[col_name]):
                 median_val = df[col_name].median()
-                df[col_name].fillna(median_val, inplace=True)
-            elif pd.api.types.is_object_dtype(df[col_name]): # Includes strings
+                df[col_name] = df[col_name].fillna(median_val)
+                
+            # Kategorik kolonları temizle
+            elif pd.api.types.is_object_dtype(df[col_name]): 
                 mode_val = df[col_name].mode()
                 if not mode_val.empty:
-                    df[col_name].fillna(mode_val[0], inplace=True)
-            # Handle date columns specifically if needed
+                    df[col_name] = df[col_name].fillna(mode_val[0])
+            
+            # Tarih sütunu işlemleri
             if col_key == 'transaction_date':
-                # Attempt to convert to datetime, coerce errors to NaT
-                df[col_name] = pd.to_datetime(df[col_name], errors='coerce')
-                # Drop rows where date conversion failed
-                df.dropna(subset=[col_name], inplace=True)
+                # Önceki tarih değerlerini yedekle
+                original_dates = df[col_name].copy()
+                
+                # Tarihleri dönüştür
+                try:
+                    df[col_name] = pd.to_datetime(df[col_name], errors='coerce')
+                    
+                    # Dönüşüm sonrası NaN oranı çok yüksekse geri al
+                    if df[col_name].isna().mean() > 0.5:  # %50'den fazla NaN varsa
+                        print(f"WARNING: Date conversion resulted in too many NaNs, keeping original values")
+                        df[col_name] = original_dates
+                except Exception as e:
+                    print(f"Date conversion failed: {e}")
+                    df[col_name] = original_dates
 
-    # Convert amount column to numeric if detected and not already numeric
+    # Amount kolonunu dönüştür
     if 'amount' in detected_cols and detected_cols['amount'] in df.columns:
         col_name = detected_cols['amount']
         if not pd.api.types.is_numeric_dtype(df[col_name]):
-             # Remove currency symbols, commas, etc. and convert
-            df[col_name] = df[col_name].astype(str).str.replace(r'[$,€£,]', '', regex=True)
-            df[col_name] = pd.to_numeric(df[col_name], errors='coerce')
-            # Fill any NaNs created during conversion (e.g., with median)
-            median_val = df[col_name].median()
-            df[col_name].fillna(median_val, inplace=True)
-            df.dropna(subset=[col_name], inplace=True) # Drop if still NaN after fill
+            try:
+                # Para birimi işaretleri temizleme
+                df[col_name] = df[col_name].astype(str).str.replace(r'[$,€£,]', '', regex=True)
+                df[col_name] = pd.to_numeric(df[col_name], errors='coerce')
+                
+                # Boş değerleri doldur
+                median_val = df[col_name].median()
+                if pd.notna(median_val):
+                    df[col_name] = df[col_name].fillna(median_val)
+            except Exception as e:
+                print(f"Amount conversion error: {e}")
 
-    # Drop rows with missing customer ID if detected
+    # ÖNEMLİ: Agresif filtreleme yapmadan önce son durumu kontrol et
+    print(f"Data shape after basic cleaning: {df.shape}")
+    
+    # Müşteri ID'sini temizle, bu kritik bir işlem olabilir
     if 'customer_id' in detected_cols and detected_cols['customer_id'] in df.columns:
-        df.dropna(subset=[detected_cols['customer_id']], inplace=True)
-        # Optional: Convert CustomerID to string to handle mixed types
-        df[detected_cols['customer_id']] = df[detected_cols['customer_id']].astype(str)
-
-    print(f"Data shape after cleaning: {df.shape}") # For debugging
+        # Kaç kayıt etkilenecek bakalım
+        missing_ids = df[detected_cols['customer_id']].isna().sum()
+        if missing_ids > 0 and missing_ids < df.shape[0] * 0.3:  # %30'dan az kayıp varsa
+            df = df.dropna(subset=[detected_cols['customer_id']])
+            print(f"Removed {missing_ids} rows with missing customer IDs")
+            # ID'yi string yap
+            df[detected_cols['customer_id']] = df[detected_cols['customer_id']].astype(str)
+    
+    # Son durumu kontrol et
+    print(f"Data shape after all cleaning steps: {df.shape}")
+    
+    # Veri boşsa en basit temizleme ile tekrar dene
+    if df.empty:
+        print("WARNING: Cleaning resulted in empty dataframe, using minimum cleaning")
+        df = df_original.copy()
+        
+        # Sadece kritik sütunlardaki çok kötü değerleri (None, NaN) temizle
+        for col_name in df.columns:
+            if col_name in [detected_cols.get('amount'), detected_cols.get('quantity')]:
+                if pd.api.types.is_numeric_dtype(df[col_name]):
+                    df[col_name] = df[col_name].fillna(0)  # Sayısal değerleri 0 ile doldur
+        
+        print(f"After minimal cleaning: {df.shape}")
+    
     return df
 
 def calculate_rfm(df, detected_cols):
     """Calculates Recency, Frequency, Monetary value for each customer."""
+    # Performans iyileştirmesi: Büyük veri setlerinde random sampling uygula
+    if df.shape[0] > 100000:
+        print(f"Large dataset detected ({df.shape[0]} rows). Using random sampling for RFM calculation...")
+        # 100,000 satırdan büyükse, 100,000 örnek al
+        df_sample = df.sample(n=100000, random_state=42)
+        print(f"Sampled {df_sample.shape[0]} rows for faster processing")
+    else:
+        df_sample = df.copy()
+    
     # Check if necessary columns are detected
     required_rfm_cols = ['customer_id', 'transaction_date', 'amount']
     if not all(col in detected_cols for col in required_rfm_cols):
@@ -112,27 +166,27 @@ def calculate_rfm(df, detected_cols):
     amount_col = detected_cols['amount']
 
     # Ensure date column is datetime type
-    if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
-         df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-         df.dropna(subset=[date_col], inplace=True) # Drop rows where conversion failed
-         if df.empty:
+    if not pd.api.types.is_datetime64_any_dtype(df_sample[date_col]):
+         df_sample[date_col] = pd.to_datetime(df_sample[date_col], errors='coerce')
+         df_sample = df_sample.dropna(subset=[date_col]) # Drop rows where conversion failed
+         if df_sample.empty:
              print("Skipping RFM calculation: No valid dates after conversion.")
              return df
 
     # Ensure amount is numeric
-    if not pd.api.types.is_numeric_dtype(df[amount_col]):
-        df[amount_col] = pd.to_numeric(df[amount_col], errors='coerce')
-        df.dropna(subset=[amount_col], inplace=True) # Drop rows where conversion failed
-        if df.empty:
+    if not pd.api.types.is_numeric_dtype(df_sample[amount_col]):
+        df_sample[amount_col] = pd.to_numeric(df_sample[amount_col], errors='coerce')
+        df_sample = df_sample.dropna(subset=[amount_col]) # Drop rows where conversion failed
+        if df_sample.empty:
              print("Skipping RFM calculation: No valid amounts after conversion.")
              return df
 
     print("Calculating RFM...")
     # Use the day after the most recent transaction date in the dataset as the reference point
-    snapshot_date = df[date_col].max() + pd.Timedelta(days=1)
+    snapshot_date = df_sample[date_col].max() + pd.Timedelta(days=1)
 
     # Aggregate data per customer
-    rfm_data = df.groupby(cust_id_col).agg({
+    rfm_data = df_sample.groupby(cust_id_col).agg({
         date_col: lambda x: (snapshot_date - x.max()).days, # Recency
         cust_id_col: 'count', # Frequency (using count of transactions)
         amount_col: 'sum' # Monetary Value
@@ -184,7 +238,7 @@ def process_data(filepath):
     if not detected_cols:
         raise ValueError("Could not automatically detect essential columns. Please check CSV format.")
         
-    df_cleaned = clean_data(df.copy(), detected_cols) # Use copy to avoid modifying original df during cleaning
+    df_cleaned = clean_data(df, detected_cols) # Use direct reference, not copy
     if df_cleaned.empty:
         raise ValueError("Data is empty after cleaning. Check input file and cleaning steps.")
 
@@ -226,7 +280,7 @@ if __name__ == '__main__':
         'Age': [35, 45, 35, 28, 45, 35, 55, 40, 55, 40],
         'Gender': ['M', 'F', 'M', 'F', 'F', 'M', 'M', 'F', 'M', 'F']
     }
-    dummy_filepath = '/home/ubuntu/dummy_sales.csv'
+    dummy_filepath = 'dummy_sales.csv'  # Changed path for easier testing
     pd.DataFrame(dummy_data).to_csv(dummy_filepath, index=False)
     
     try:

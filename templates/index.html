@@ -1,34 +1,394 @@
 {% extends "base.html" %}
 
-{% block title %}Upload CSV - Customer Segmentation{% endblock %}
+{% block title %}Müşteri Segmentasyon ve Analiz Platformu{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <h1 class="text-center mb-4">Customer Segmentation & Recommendation Tool</h1>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müşteri Segmentasyon Analizi</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    
+    <!-- Plotly.js - Interaktif grafikler için gerekli -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <style>
+        .hero-section {
+            background-color: #f8f9fa;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0.5rem;
+        }
         
-        <div class="card mb-4">
-            <div class="card-header">Upload CSV File</div>
-            <div class="card-body">
-                <p class="card-text">Upload your customer data in CSV format. The system will automatically detect relevant columns (like CustomerID, TransactionDate, Amount, Age, etc.), perform segmentation, and generate marketing recommendations.</p>
-                <form method="post" enctype="multipart/form-data" action="{{ url_for("upload_and_process") }}">
-                    <div class="mb-3">
-                        <label for="file" class="form-label">Choose CSV file</label>
-                        <input class="form-control" type="file" id="file" name="file" accept=".csv" required>
+        .upload-container {
+            border: 2px dashed #dee2e6;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-container:hover {
+            border-color: #6c757d;
+            background-color: #f8f9fa;
+        }
+
+        .segment-box {
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .segment-box:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        
+        .feature-card {
+            height: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .help-text {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        /* İlerleme çubuğu stilleri */
+        .progress-container {
+            display: none;
+            margin-top: 1.5rem;
+        }
+        
+        .progress {
+            height: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-graph-up me-2"></i>Müşteri Segmentasyon Analizi
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">
+                            <i class="bi bi-house-door me-1"></i>Anasayfa
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#helpModal">
+                            <i class="bi bi-question-circle me-1"></i>Yardım
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container py-4">
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <h1 class="display-5 fw-bold mb-3">Müşteri Verilerinizi Analiz Edin</h1>
+                        <p class="lead">Gelişmiş segmentasyon algoritmaları ile müşterilerinizi sınıflandırın, özel pazarlama stratejileri geliştirin.</p>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                            <a href="#upload-section" class="btn btn-primary btn-lg px-4 me-md-2">
+                                <i class="bi bi-upload me-2"></i>Analiz Başlat
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary btn-lg px-4" data-bs-toggle="modal" data-bs-target="#helpModal">
+                                <i class="bi bi-info-circle me-2"></i>Nasıl Çalışır
+                            </button>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Upload and Process</button>
-                </form>
+                    <div class="col-lg-4 d-none d-lg-block text-center">
+                        <i class="bi bi-pie-chart-fill text-primary" style="font-size: 8rem;"></i>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <!-- Results will be displayed here later -->
-        <div id="results-area">
-            {% if results %}
-                {% include "results_display.html" %}
-            {% endif %}
-        </div>
+        <!-- Upload Section -->
+        <section id="upload-section" class="mb-5">
+            <h2 class="mb-4"><i class="bi bi-cloud-upload me-2"></i>Veri Yükleme</h2>
+            
+            <div class="card">
+                <div class="card-body">
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form action="/upload" method="POST" enctype="multipart/form-data" id="uploadForm" class="mb-4">
+                        <div class="upload-container">
+                            <i class="bi bi-file-earmark-arrow-up display-4 mb-3 text-primary"></i>
+                            <h5>CSV Dosyası Yükleyin</h5>
+                            <p class="text-muted mb-4">Müşteri verilerinizi içeren CSV dosyasını sürükleyin veya seçin</p>
+                            
+                            <div class="mb-4">
+                                <input type="file" name="file" id="fileInput" class="form-control" accept=".csv" required>
+                                <div class="help-text mt-2">
+                                    <i class="bi bi-info-circle me-1"></i>Desteklenen format: CSV
+                                </div>
+                            </div>
 
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="number" class="form-control" id="segmentCount" name="segment_count" min="2" max="10" placeholder="Segment Sayısı">
+                                        <label for="segmentCount">Segment Sayısı (2-10 arası, opsiyonel)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="button" id="findOptimalButton" class="btn btn-outline-info h-100 w-100">
+                                        <i class="bi bi-braces me-2"></i>Optimali Bul
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-lg px-4" id="analyzeButton">
+                                <i class="bi bi-graph-up me-2"></i>Analiz Et
+                            </button>
+                        </div>
+                        
+                        <div class="progress-container" id="progressContainer">
+                            <p>Analiz yapılıyor... Bu işlem veri boyutuna göre birkaç dakika sürebilir.</p>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Results Section (Conditionally Rendered) -->
+        {% if results %}
+            {% include 'results_display.html' %}
+        {% else %}
+            <!-- Features Section -->
+            <section class="features-section mb-5">
+                <h2 class="mb-4"><i class="bi bi-stars me-2"></i>Neler Yapabilirsiniz</h2>
+                
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="card feature-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-people-fill display-4 mb-3 text-primary"></i>
+                                <h5 class="card-title">Müşteri Segmentasyonu</h5>
+                                <p class="card-text">Davranışsal ve demografik özelliklerine göre müşterilerinizi otomatik olarak gruplara ayırın.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card feature-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-bar-chart-fill display-4 mb-3 text-success"></i>
+                                <h5 class="card-title">Detaylı Analiz</h5>
+                                <p class="card-text">Her müşteri segmenti için detaylı istatistikler ve görselleştirmeler elde edin.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card feature-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-lightbulb-fill display-4 mb-3 text-warning"></i>
+                                <h5 class="card-title">Pazarlama Önerileri</h5>
+                                <p class="card-text">Her segment için kişiselleştirilmiş pazarlama stratejileri ve öneriler alın.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- How It Works Section -->
+            <section class="how-it-works-section mb-5">
+                <h2 class="mb-4"><i class="bi bi-gear me-2"></i>Nasıl Çalışır</h2>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-10">
+                                <div class="steps">
+                                    <div class="step d-flex mb-4">
+                                        <div class="step-number bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">1</div>
+                                        <div class="step-content">
+                                            <h5>Veri Yükleme</h5>
+                                            <p>Müşteri verilerinizi içeren CSV dosyasını sisteme yükleyin. En az 3 kolona sahip (Müşteri ID, Sipariş Tarihi, Miktar) bir dosya kullanılması önerilir.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="step d-flex mb-4">
+                                        <div class="step-number bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">2</div>
+                                        <div class="step-content">
+                                            <h5>Veri İşleme</h5>
+                                            <p>Sistem verilerinizi otomatik olarak temizler, ön işleme yapar ve segmentasyon için hazırlar. Mümkünse RFM (Recency, Frequency, Monetary) analizi uygulanır.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="step d-flex mb-4">
+                                        <div class="step-number bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">3</div>
+                                        <div class="step-content">
+                                            <h5>Segmentasyon</h5>
+                                            <p>K-Means algoritması kullanılarak müşterileriniz benzer davranış kalıplarına göre segmentlere ayrılır. İsterseniz segment sayısını kendiniz belirleyebilir veya sistem optimali bulabilir.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="step d-flex">
+                                        <div class="step-number bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">4</div>
+                                        <div class="step-content">
+                                            <h5>Sonuçlar ve Öneriler</h5>
+                                            <p>Her segment için detaylı analizler, görselleştirmeler ve yapay zeka destekli pazarlama önerileri oluşturularak size sunulur.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
     </div>
-</div>
+    
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">© 2025 Müşteri Segmentasyon Analizi</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-decoration-none text-muted me-3">Gizlilik Politikası</a>
+                    <a href="#" class="text-decoration-none text-muted">Kullanım Şartları</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Help Modal -->
+    <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>Nasıl Kullanılır</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h5>1. Veri Formatı</h5>
+                    <p>Sistem en iyi şekilde aşağıdaki formattaki CSV dosyaları ile çalışır:</p>
+                    <ul>
+                        <li>Müşteri ID veya Benzersiz Tanımlayıcı</li>
+                        <li>Sipariş/İşlem Tarihi</li>
+                        <li>Sipariş/İşlem Tutarı</li>
+                        <li>Ürün Bilgisi veya Sipariş Miktarı (opsiyonel)</li>
+                        <li>Demografik bilgiler (opsiyonel): Yaş, Cinsiyet, Konum vb.</li>
+                    </ul>
+                    
+                    <h5>2. Segment Sayısı Nasıl Belirlenir?</h5>
+                    <p>Segment sayısını 2-10 arasında bir değer olarak manuel olarak belirleyebilirsiniz. Eğer boş bırakırsanız, sistem Silhouette skoru ve Elbow metodu kullanarak optimal küme sayısını otomatik olarak belirler.</p>
+                    
+                    <h5>3. Segmentler Ne Anlama Geliyor?</h5>
+                    <p>Segmentler, benzer davranış ve/veya demografik özelliklere sahip müşteri gruplarıdır. Örneğin:</p>
+                    <ul>
+                        <li>Yüksek Değerli Düzenli Müşteriler</li>
+                        <li>Ara Sıra Alışveriş Yapanlar</li>
+                        <li>Yeni Kazanılan Müşteriler</li>
+                        <li>Kaybedilme Riski Olanlar</li>
+                    </ul>
+                    
+                    <h5>4. Sorun Giderme</h5>
+                    <p>Eğer analiz sırasında bir hata alırsanız:</p>
+                    <ul>
+                        <li>CSV dosyasının doğru formatta olduğundan emin olun</li>
+                        <li>Tarih sütununun geçerli bir tarih formatında olduğunu kontrol edin</li>
+                        <li>Sayısal değerlerin doğru formatta olduğunu kontrol edin</li>
+                        <li>Çok büyük dosyalarda (>100MB) işlem daha uzun sürebilir</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Form submit progress gösterimi
+            const uploadForm = document.getElementById('uploadForm');
+            const progressContainer = document.getElementById('progressContainer');
+            const analyzeButton = document.getElementById('analyzeButton');
+            
+            if (uploadForm) {
+                uploadForm.addEventListener('submit', function() {
+                    progressContainer.style.display = 'block';
+                    analyzeButton.disabled = true;
+                });
+            }
+            
+            // Optimal segment sayısı butonu
+            const findOptimalButton = document.getElementById('findOptimalButton');
+            const segmentCountInput = document.getElementById('segmentCount');
+            
+            if (findOptimalButton && segmentCountInput) {
+                findOptimalButton.addEventListener('click', function() {
+                    segmentCountInput.value = ''; // Boş bırak, sistem otomatik belirleyecek
+                    alert('Sistem optimal segment sayısını otomatik olarak belirleyecek.');
+                });
+            }
+            
+            // File input değişikliği için görsel feedback
+            const fileInput = document.getElementById('fileInput');
+            const uploadContainer = document.querySelector('.upload-container');
+            
+            if (fileInput && uploadContainer) {
+                fileInput.addEventListener('change', function() {
+                    if (fileInput.files.length > 0) {
+                        uploadContainer.style.borderColor = '#198754'; // Success color
+                    } else {
+                        uploadContainer.style.borderColor = '#dee2e6'; // Default color
+                    }
+                });
+            }
+            
+            // Plotly grafiklerini responsive yap
+            window.addEventListener('resize', function() {
+                if (typeof Plotly !== 'undefined') {
+                    Plotly.Plots.resize(document.getElementById('segmentPlot'));
+                }
+            });
+        });
+    </script>
+</body>
+</html>
 {% endblock %}
 

@@ -176,3 +176,784 @@
     </div>
 </div>
 
+{% if results %}
+<div class="segment-analysis-results">
+    <!-- Pazarlama Stratejisi Özeti -->
+    <div class="card mb-4 segment-box">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-stars me-2"></i>Pazarlama Stratejisi Özeti</h5>
+        </div>
+        <div class="card-body">
+            <p class="lead">Bu segmentasyon analizi sonucunda, müşterilerinizi {{ results.k }} farklı gruba ayırdık. Her segment için özel pazarlama stratejileri ve öneriler aşağıda sunulmuştur.</p>
+            
+            <div class="strategy-steps mt-4 mb-3 p-4 bg-light rounded-3">
+                <h5 class="mb-3 text-success"><i class="bi bi-check-circle me-2"></i>Sonraki Adımlar</h5>
+                <ol class="strategy-list ps-3">
+                    <li class="mb-2">Her segment için önerilen kampanyaları inceleyin</li>
+                    <li class="mb-2">Müşteri iletişim stratejilerinizi segmentlere göre özelleştirin</li>
+                    <li class="mb-2">Ürün önerilerini ve teklifleri segmentlere göre değiştirin</li>
+                    <li class="mb-2">Pazarlama bütçenizi en değerli segmentlere öncelik vererek planlayın</li>
+                    <li class="mb-2">Yeni segmentlerin oluşumu için düzenli olarak analizi tekrarlayın</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analiz Özeti ve Rapor -->
+    <div class="card mb-4 segment-box">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Analiz Özeti ve Rapor</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="p-3 border rounded bg-light text-center">
+                        <div class="display-4 text-primary mb-2">{{ results.total_customers }}</div>
+                        <div class="text-muted">Toplam Müşteri</div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="p-3 border rounded bg-light text-center">
+                        <div class="display-4 text-success mb-2">{{ results.k }}</div>
+                        <div class="text-muted">Segment Sayısı</div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="p-3 border rounded bg-light text-center">
+                        <div class="display-4 text-info mb-2">
+                            {% if results.profiles %}
+                                {{ ((results.profiles | length) / (results.total_customers) * 100) | round(1) }}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </div>
+                        <div class="text-muted">Kapsama Oranı</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="segment-distribution mb-4">
+                <h5 class="mb-3">Segment Dağılımı</h5>
+                
+                <div class="row">
+                    {% for segment_id, profile in results.profiles.items() %}
+                    <div class="col-md-6 mb-4">
+                        <div class="segment-distribution-item">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Segment {{ segment_id }} ({{ profile.size }} müşteri)</span>
+                                <span class="text-primary">{{ ((profile.size / results.total_customers) * 100) | round(1) }}%</span>
+                            </div>
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                    style="width: {{ ((profile.size / results.total_customers) * 100) | round(1) }}%;" 
+                                    aria-valuenow="{{ ((profile.size / results.total_customers) * 100) | round(1) }}" 
+                                    aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            {% if results.plots and results.plots[0] %}
+            <div class="segment-visualization mt-4">
+                <h5 class="mb-3">Segmentasyon Analizi Görselleştirmesi</h5>
+                <div id="segmentPlot" class="plot-container"></div>
+            </div>
+            {% endif %}
+            
+            <!-- Gelişmiş Segment Görselleştirmeleri -->
+            {% if results.segment_plots %}
+            <div class="advanced-visualizations mt-5">
+                <h5 class="mb-4">Gelişmiş Segment Görselleştirmeleri</h5>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">Segment Dağılımı</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="segmentDistribution" class="visualization-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">Özellik Korelasyon Matrisi</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="correlationHeatmap" class="visualization-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">Segment Dağılım Matrisi</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="scatterMatrix" class="visualization-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">3B Segmentasyon Grafiği</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="scatter3d" class="visualization-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Segment Detayları -->
+    <div class="card mb-4 segment-box">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="bi bi-people me-2"></i>Segment Detayları & Öneriler</h5>
+        </div>
+        <div class="card-body">
+            <div class="segment-grid">
+                {% for segment_id, profile in results.profiles.items() %}
+                    <div class="segment-item">
+                        <div class="card h-100 segment-details-card">
+                            {% set segment_colors = ['primary', 'success', 'danger', 'warning', 'info', 'dark'] %}
+                            {% set color_index = segment_id | int % segment_colors|length %}
+                            {% set segment_color = segment_colors[color_index] %}
+                            
+                            <div class="card-header bg-{{ segment_color }} text-white">
+                                <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Segment {{ segment_id }}</h5>
+                                <span class="badge bg-light text-dark float-end">{{ profile.size }} müşteri</span>
+                            </div>
+                            
+                            <div class="card-body segment-card-body">
+                                <div class="segment-content">
+                                    <h6 class="mb-3"><i class="bi bi-bar-chart-line me-2"></i>Ortalama Özellikler</h6>
+                                    
+                                    {% if profile.numeric_summary %}
+                                    <div class="table-responsive mb-4 expandable-content">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Özellik</th>
+                                                    <th class="text-end">Değer</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for feature, value in profile.numeric_summary.items() %}
+                                                <tr>
+                                                    <td>{{ feature }}</td>
+                                                    <td class="text-end fw-bold">{{ value }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="segment-plot my-4">
+                                        <div id="segmentScatterPlot{{ segment_id }}" class="individual-plot">
+                                            <!-- Bireysel segment grafiği burada yer alacak -->
+                                            {% if results.individual_plots and results.individual_plots[segment_id|string] %}
+                                                <!-- JavaScript ile plotly grafiği burada yüklenecek -->
+                                            {% else %}
+                                                <!-- Sahte segment grafiği -->
+                                                <div class="text-center py-4 bg-light rounded">
+                                                    <i class="bi bi-graph-up display-1 text-muted"></i>
+                                                    <p class="mt-2 text-muted">K-means scatter plot</p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    {% if results.recommendations and results.recommendations[segment_id|string] %}
+                                    <div class="recommendation-section mt-4">
+                                        <h6 class="mb-3"><i class="bi bi-lightbulb me-2"></i>Pazarlama Önerileri (AI)</h6>
+                                        
+                                        {% set recommendation = results.recommendations[segment_id|string] %}
+                                        
+                                        {% if recommendation.campaign %}
+                                        <div class="mb-3">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bi bi-megaphone me-2 text-{{ segment_color }}"></i>
+                                                <span class="fw-bold">Kampanya Fikri</span>
+                                            </div>
+                                            <div class="expandable-content">
+                                                <p class="ms-4 mb-0">{{ recommendation.campaign }}</p>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="row mt-3">
+                                            {% if recommendation.channel %}
+                                            <div class="col-md-6 mb-3">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <i class="bi bi-broadcast me-2 text-{{ segment_color }}"></i>
+                                                    <span class="fw-bold">İletişim Kanalı</span>
+                                                </div>
+                                                <div class="expandable-content">
+                                                    <p class="ms-4 mb-0">{{ recommendation.channel }}</p>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if recommendation.offer %}
+                                            <div class="col-md-6 mb-3">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <i class="bi bi-tag me-2 text-{{ segment_color }}"></i>
+                                                    <span class="fw-bold">Önerilen Teklif</span>
+                                                </div>
+                                                <div class="expandable-content">
+                                                    <p class="ms-4 mb-0">{{ recommendation.offer }}</p>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        {% if recommendation.rationale %}
+                                        <div class="mt-3">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bi bi-chat-quote me-2 text-{{ segment_color }}"></i>
+                                                <span class="fw-bold">Gerekçe</span>
+                                            </div>
+                                            <div class="expandable-content">
+                                                <p class="ms-4 mb-0">{{ recommendation.rationale }}</p>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="hover-hint text-center mt-3">
+                                    <i class="bi bi-mouse2 me-1"></i> Daha fazla bilgi için fareyi üzerine getirin
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Karşılaştırmalı Analiz -->
+    <div class="card mb-4 segment-box">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-arrows-angle-expand me-2"></i>Segmentler Arası Karşılaştırma</h5>
+        </div>
+        <div class="card-body">
+            <h6 class="mb-4">Segmentler Arasındaki Temel Farklar</h6>
+            
+            <div class="comparison-charts">
+                <!-- Örnek karşılaştırma grafikleri -->
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="comparison-chart p-3 bg-light rounded">
+                            <h6 class="text-center mb-3">Ortalama Sipariş Tutarı</h6>
+                            <div class="chart-placeholder" id="avgOrderChart">
+                                <div class="text-center py-5">
+                                    <i class="bi bi-bar-chart-fill display-1 text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="comparison-chart p-3 bg-light rounded">
+                            <h6 class="text-center mb-3">Sipariş Sıklığı</h6>
+                            <div class="chart-placeholder" id="freqChart">
+                                <div class="text-center py-5">
+                                    <i class="bi bi-graph-up-arrow display-1 text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="segment-summary mt-4">
+                <h6 class="mb-3">Özet Segmentasyon Tablosu</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Segment</th>
+                                <th>Büyüklük</th>
+                                <th>Ortalama Değer</th>
+                                <th>Öneri</th>
+                                <th>Öncelik</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for segment_id, profile in results.profiles.items() %}
+                            {% set segment_colors = ['primary', 'success', 'danger', 'warning', 'info', 'dark'] %}
+                            {% set color_index = segment_id | int % segment_colors|length %}
+                            {% set segment_color = segment_colors[color_index] %}
+                            
+                            <tr>
+                                <td>
+                                    <span class="badge bg-{{ segment_color }} me-1">{{ segment_id }}</span>
+                                    {% if profile.size > (results.total_customers / results.profiles|length) * 1.5 %}
+                                    <span class="badge bg-light text-dark">Büyük</span>
+                                    {% elif profile.size < (results.total_customers / results.profiles|length) * 0.5 %}
+                                    <span class="badge bg-light text-dark">Küçük</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark">Orta</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ profile.size }} <small class="text-muted">({{ ((profile.size / results.total_customers) * 100) | round(1) }}%)</small></td>
+                                <td>
+                                    {% if profile.numeric_summary and profile.numeric_summary.Amount %}
+                                    {{ profile.numeric_summary.Amount }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if results.recommendations and results.recommendations[segment_id|string] and results.recommendations[segment_id|string].campaign %}
+                                    {{ results.recommendations[segment_id|string].campaign[:30] }}...
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if profile.numeric_summary and profile.numeric_summary.Amount %}
+                                        {% if profile.numeric_summary.Amount > 800 %}
+                                        <span class="badge bg-success">Yüksek</span>
+                                        {% elif profile.numeric_summary.Amount > 400 %}
+                                        <span class="badge bg-warning">Orta</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Düşük</span>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="badge bg-secondary">Belirsiz</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sonuç ve Tavsiyeler -->
+    <div class="card mb-4 segment-box">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-check2-circle me-2"></i>Sonuç ve Tavsiyeler</h5>
+        </div>
+        <div class="card-body">
+            <div class="p-4 bg-light rounded">
+                <h5 class="text-success mb-3">Genel Değerlendirme</h5>
+                <p>Analiz sonucunda müşterilerinizi {{ results.k }} farklı segmente ayırdık. Bu segmentasyon, hedefli pazarlama kampanyaları geliştirmenize ve müşteri memnuniyetini artırmanıza yardımcı olacaktır.</p>
+                
+                <h5 class="text-success mt-4 mb-3">Pazarlama Stratejisi Önerileri</h5>
+                <ul class="icon-list">
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Her segment için özel iletişim stratejileri geliştirin</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Yüksek değerli segmentlere özel indirim ve ayrıcalıklar sunun</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Düşük aktiviteli segmentleri yeniden kazanmak için özel kampanyalar düzenleyin</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Segment davranışlarındaki değişimleri düzenli olarak izleyin</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>6 ayda bir segmentasyon analizini tekrarlayarak güncel kalın</li>
+                </ul>
+                
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary" type="button" id="downloadReportBtn">
+                        <i class="bi bi-download me-2"></i> Detaylı Raporu İndir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Rapor indirme fonksiyonalitesi
+    document.getElementById('downloadReportBtn').addEventListener('click', function() {
+        alert('Rapor indirilmeye hazırlanıyor...');
+        // Burada gerçek bir rapor indirme fonksiyonu implement edilebilir
+    });
+    
+    // Plotly grafiği varsa yükle
+    {% if results.plots and results.plots[0] %}
+    var plotData = {{ results.plots[0] | safe }};
+    if (plotData) {
+        Plotly.newPlot('segmentPlot', plotData.data, plotData.layout);
+    }
+    {% endif %}
+    
+    // Segment-bazlı grafikler varsa yükle
+    {% for segment_id, plot_data in results.individual_plots.items() %}
+    if (document.getElementById('segmentScatterPlot{{ segment_id }}')) {
+        var segmentPlotData = {{ plot_data | safe }};
+        if (segmentPlotData) {
+            Plotly.newPlot('segmentScatterPlot{{ segment_id }}', segmentPlotData.data, segmentPlotData.layout, {responsive: true});
+        } else {
+            // Eğer gerçek grafik yoksa sahte grafik oluştur
+            createPlaceholderChart('segmentScatterPlot{{ segment_id }}');
+        }
+    }
+    {% endfor %}
+    
+    // Eksik segment grafikleri için sahte grafikler oluştur
+    {% for segment_id, profile in results.profiles.items() %}
+    if (document.getElementById('segmentScatterPlot{{ segment_id }}') && 
+        (!results.individual_plots || !results.individual_plots['{{ segment_id }}'])) {
+        createPlaceholderChart('segmentScatterPlot{{ segment_id }}');
+    }
+    {% endfor %}
+    
+    // Özel segment görselleştirmeleri
+    {% if results.segment_plots %}
+    // Segment dağılımı grafiği
+    {% if results.segment_plots.segment_distribution %}
+    var segmentDistributionImg = document.createElement('img');
+    segmentDistributionImg.src = 'data:image/png;base64,{{ results.segment_plots.segment_distribution }}';
+    segmentDistributionImg.alt = 'Segment Dağılımı';
+    segmentDistributionImg.className = 'img-fluid';
+    var segmentDistributionContainer = document.getElementById('segmentDistribution');
+    if (segmentDistributionContainer) {
+        segmentDistributionContainer.innerHTML = '';
+        segmentDistributionContainer.appendChild(segmentDistributionImg);
+    }
+    {% endif %}
+
+    // Korelasyon matrisi
+    {% if results.segment_plots.correlation_heatmap %}
+    var correlationImg = document.createElement('img');
+    correlationImg.src = 'data:image/png;base64,{{ results.segment_plots.correlation_heatmap }}';
+    correlationImg.alt = 'Özellik Korelasyon Matrisi';
+    correlationImg.className = 'img-fluid';
+    var correlationContainer = document.getElementById('correlationHeatmap');
+    if (correlationContainer) {
+        correlationContainer.innerHTML = '';
+        correlationContainer.appendChild(correlationImg);
+    }
+    {% endif %}
+
+    // Dağılım matrisi
+    {% if results.segment_plots.scatter_matrix %}
+    var scatterMatrixImg = document.createElement('img');
+    scatterMatrixImg.src = 'data:image/png;base64,{{ results.segment_plots.scatter_matrix }}';
+    scatterMatrixImg.alt = 'Segment Dağılım Matrisi';
+    scatterMatrixImg.className = 'img-fluid';
+    var scatterMatrixContainer = document.getElementById('scatterMatrix');
+    if (scatterMatrixContainer) {
+        scatterMatrixContainer.innerHTML = '';
+        scatterMatrixContainer.appendChild(scatterMatrixImg);
+    }
+    {% endif %}
+
+    // 3D grafik
+    {% if results.segment_plots.scatter_3d %}
+    var scatter3dImg = document.createElement('img');
+    scatter3dImg.src = 'data:image/png;base64,{{ results.segment_plots.scatter_3d }}';
+    scatter3dImg.alt = '3B Segmentasyon Grafiği';
+    scatter3dImg.className = 'img-fluid';
+    var scatter3dContainer = document.getElementById('scatter3d');
+    if (scatter3dContainer) {
+        scatter3dContainer.innerHTML = '';
+        scatter3dContainer.appendChild(scatter3dImg);
+    }
+    {% endif %}
+    {% else %}
+        // Segment görselleştirmeleri yoksa sahte karşılaştırma grafikleri oluştur
+        createBarChart('avgOrderChart');
+        createLineChart('freqChart');
+    {% endif %}
+    
+    // Sayfa yüklendikten sonra bütün grafiklerin yüklenmesi ve responsive ayarlanması için
+    window.addEventListener('resize', function() {
+        if (typeof Plotly !== 'undefined') {
+            var plots = document.querySelectorAll('.individual-plot');
+            plots.forEach(function(plot) {
+                if (plot.layout) {
+                    Plotly.relayout(plot.id, {
+                        'xaxis.autorange': true,
+                        'yaxis.autorange': true
+                    });
+                }
+            });
+        }
+    });
+});
+
+// Sahte segment grafiği oluşturma
+function createPlaceholderChart(elementId) {
+    var element = document.getElementById(elementId);
+    if (!element) return;
+    
+    if (typeof Plotly === 'undefined') {
+        console.warn('Plotly kütüphanesi yüklenemedi. Sahte grafik gösterilemiyor.');
+        element.innerHTML = '<div class="text-center py-4 bg-light rounded"><i class="bi bi-graph-up display-1 text-muted"></i><p class="mt-2 text-muted">Grafik gösterilemiyor</p></div>';
+        return;
+    }
+    
+    // Rastgele veri oluştur
+    var xValues = [];
+    var yValues = [];
+    var sizes = [];
+    
+    for (var i = 0; i < 30; i++) {
+        xValues.push(Math.random() * 10);
+        yValues.push(Math.random() * 10);
+        sizes.push(Math.random() * 15 + 5);
+    }
+    
+    var data = [{
+        x: xValues,
+        y: yValues,
+        mode: 'markers',
+        marker: {
+            size: sizes,
+            color: xValues,
+            colorscale: 'Viridis',
+            opacity: 0.7
+        },
+        type: 'scatter'
+    }];
+    
+    var layout = {
+        height: 250,
+        margin: {t:10, r:10, l:40, b:40},
+        xaxis: {title: 'Feature 1'},
+        yaxis: {title: 'Feature 2'},
+        showlegend: false
+    };
+    
+    var config = {
+        responsive: true,
+        displayModeBar: false
+    };
+    
+    Plotly.newPlot(elementId, data, layout, config);
+}
+
+// Sahte bar grafiği
+function createBarChart(elementId) {
+    var element = document.getElementById(elementId);
+    if (!element || typeof Plotly === 'undefined') return;
+    
+    var data = [{
+        x: ['Segment 0', 'Segment 1', 'Segment 2', 'Segment 3'],
+        y: [450, 890, 230, 560],
+        type: 'bar',
+        marker: {
+            color: ['#4361ee', '#06d6a0', '#ef476f', '#ffd166']
+        }
+    }];
+    
+    var layout = {
+        height: 250,
+        margin: {t:10, r:10, l:50, b:50},
+        yaxis: {title: 'Ortalama Tutar (₺)'},
+        showlegend: false
+    };
+    
+    var config = {
+        responsive: true,
+        displayModeBar: false
+    };
+    
+    Plotly.newPlot(elementId, data, layout, config);
+}
+
+// Sahte line grafiği
+function createLineChart(elementId) {
+    var element = document.getElementById(elementId);
+    if (!element || typeof Plotly === 'undefined') return;
+    
+    var data = [];
+    
+    var segmentLabels = ['Segment 0', 'Segment 1', 'Segment 2', 'Segment 3'];
+    var colors = ['#4361ee', '#06d6a0', '#ef476f', '#ffd166'];
+    
+    for (var i = 0; i < segmentLabels.length; i++) {
+        var yValues = [];
+        for (var j = 0; j < 12; j++) {
+            yValues.push(Math.random() * 10 + (i * 2));
+        }
+        
+        data.push({
+            x: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
+            y: yValues,
+            mode: 'lines+markers',
+            name: segmentLabels[i],
+            line: {color: colors[i]}
+        });
+    }
+    
+    var layout = {
+        height: 250,
+        margin: {t:10, r:10, l:50, b:50},
+        yaxis: {title: 'Sipariş Sayısı'},
+        showlegend: true,
+        legend: {orientation: 'h', y: -0.2}
+    };
+    
+    var config = {
+        responsive: true,
+        displayModeBar: false
+    };
+    
+    Plotly.newPlot(elementId, data, layout, config);
+}
+</script>
+
+<style>
+.segment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.segment-item {
+    min-width: 0; /* Taşmayı önler */
+}
+
+.segment-details-card {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.segment-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.segment-details-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+    z-index: 100;
+}
+
+.segment-content {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    max-height: 320px;
+    transition: max-height 0.5s ease;
+}
+
+.segment-details-card:hover .segment-content {
+    max-height: 2000px; /* Yeterince büyük bir değer olmalı */
+}
+
+.expandable-content {
+    max-height: 80px;
+    overflow: hidden;
+    position: relative;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+}
+
+.expandable-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.segment-details-card:hover .expandable-content {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.segment-details-card:hover .expandable-content::after {
+    opacity: 0;
+}
+
+.hover-hint {
+    font-size: 0.8rem;
+    color: #6c757d;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+    margin-top: auto;
+}
+
+.segment-details-card:hover .hover-hint {
+    opacity: 0;
+}
+
+.segment-plot {
+    height: 250px;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.individual-plot {
+    height: 250px;
+    width: 100%;
+}
+
+.chart-placeholder {
+    height: 250px;
+    width: 100%;
+}
+
+.strategy-list li {
+    padding: 0.5rem 0;
+}
+
+.visualization-container {
+    min-height: 300px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.visualization-container img {
+    max-width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+}
+
+.plot-container {
+    height: 450px;
+    width: 100%;
+}
+
+/* Farklı ekran boyutları için responsive ayarlamalar */
+@media (max-width: 992px) {
+    .segment-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .segment-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+}
+
+@media (max-width: 576px) {
+    .segment-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endif %}
+

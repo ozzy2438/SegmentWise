@@ -111,58 +111,40 @@ def find_optimal_k(data, max_k=10):
     if max_k < 2:
         print(f"Not enough data points ({data.shape[0]}) to perform meaningful clustering beyond K=1. Defaulting to K=1.")
         return 1
-        
-    inertias = []
-    silhouette_scores = []
-    k_range = range(2, max_k + 1)
-
-    print(f"Finding optimal K in range 2 to {max_k}...")
-    for k in k_range:
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init='auto')
-        kmeans.fit(data)
-        inertias.append(kmeans.inertia_)
-        # Silhouette score requires at least 2 labels
-        if k > 1:
-            try:
-                score = silhouette_score(data, kmeans.labels_)
-                silhouette_scores.append(score)
-                print(f"  K={k}, Inertia={kmeans.inertia_:.2f}, Silhouette Score={score:.4f}")
-            except ValueError as e:
-                 print(f"  K={k}, Inertia={kmeans.inertia_:.2f}, Could not calculate Silhouette Score: {e}")
-                 silhouette_scores.append(-1) # Indicate failure
-        else:
-             print(f"  K={k}, Inertia={kmeans.inertia_:.2f}")
-
-    # --- Determining Optimal K --- 
-    # Simple approach: Look for max silhouette score
-    optimal_k_silhouette = -1
-    if silhouette_scores:
-        best_silhouette_score = max(silhouette_scores)
-        if best_silhouette_score > -1: # Check if calculation was successful
-             optimal_k_silhouette = k_range[np.argmax(silhouette_scores)]
-             print(f"Optimal K based on Silhouette Score: {optimal_k_silhouette} (Score: {best_silhouette_score:.4f})")
-        else:
-            print("Silhouette scores could not be reliably calculated.")
-
-    # TODO: Implement Elbow method analysis (more complex, involves finding the 'elbow' point)
-    # TODO: Integrate OpenAI suggestion for K based on data profile (requires API call)
-
-    # Decision Logic (simple version): Prefer silhouette, fallback if needed
-    if optimal_k_silhouette != -1:
-        optimal_k = optimal_k_silhouette
+    
+    # Performans optimizasyonu: Büyük veri setleri için örnekleme yapalım
+    sample_size = 10000  # Maksimum örneklem boyutu
+    if data.shape[0] > sample_size:
+        print(f"Data size ({data.shape[0]} rows) is large. Using {sample_size} random samples for optimal K calculation.")
+        # Rastgele örnekleme
+        sample_indices = np.random.choice(data.shape[0], sample_size, replace=False)
+        data_sample = data[sample_indices, :]
     else:
-        # Fallback logic (e.g., choose a default like 3 or 4, or use Elbow method result)
-        print("Could not determine optimal K from Silhouette. Using default K=4.")
-        optimal_k = 4 # Default fallback
-        # Ensure default K is valid
-        optimal_k = min(optimal_k, max_k) 
-        optimal_k = max(optimal_k, 2) # Ensure at least 2 clusters if possible
-
-    # User preference: Fewer segments are better
-    # We could potentially adjust optimal_k downwards if it's high, e.g., max(2, optimal_k - 1)
-    # For now, stick to the calculated/default optimal_k
-    print(f"Selected Optimal K: {optimal_k}")
-    return optimal_k
+        data_sample = data
+    
+    from sklearn.metrics import silhouette_score
+    
+    k_range = range(2, max_k + 1)
+    inertia_values = []
+    silhouette_scores = []
+    
+    for k in k_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        kmeans.fit(data_sample)
+        inertia_values.append(kmeans.inertia_)
+        
+        # Silhouette score hesaplaması (daha yavaş ama daha doğru bir metrik)
+        cluster_labels = kmeans.labels_
+        silhouette_avg = silhouette_score(data_sample, cluster_labels)
+        silhouette_scores.append(silhouette_avg)
+        
+        print(f"  K={k}, Inertia={kmeans.inertia_:.2f}, Silhouette Score={silhouette_avg:.4f}")
+    
+    # Optimal K'yı silhouette score'a göre belirleyelim (daha yüksek daha iyi)
+    optimal_k_silhouette = k_range[np.argmax(silhouette_scores)]
+    print(f"Optimal K based on Silhouette Score: {optimal_k_silhouette} (Score: {max(silhouette_scores):.4f})")
+    
+    return optimal_k_silhouette
 
 def perform_segmentation(data, k):
     """Performs K-Means clustering."""
@@ -179,53 +161,241 @@ def perform_segmentation(data, k):
     return kmeans, labels
 
 # --- Main Segmentation Function --- 
-def run_segmentation_pipeline(processed_df, detected_cols):
-    """Runs the full segmentation pipeline: feature selection, preprocessing, finding K, clustering."""
-    print("\n--- Starting Segmentation Pipeline ---")
+def run_segmentation_pipeline(df, detected_cols, user_k=None):
+    """Runs the full segmentation pipeline with preprocessing and clustering."""
+    print("--- Starting Segmentation Pipeline ---")
     
-    # 1. Select Features
-    features_df, numeric_features, categorical_features = select_features_for_segmentation(processed_df, detected_cols)
+    # --- Feature Selection & Preparation ---
+    # 1. Check if RFM features are available, otherwise use other numeric features
+    use_rfm = all(col in df.columns for col in ["Recency", "Frequency", "MonetaryValue"])
     
-    # Store customer IDs before preprocessing if they exist
-    customer_ids = None
-    customer_id_col = detected_cols.get("customer_id")
-    if customer_id_col and customer_id_col in features_df.columns:
-        customer_ids = features_df[customer_id_col].copy()
-        features_for_processing = features_df.drop(columns=[customer_id_col])
+    if use_rfm:
+        print("Using RFM features for segmentation.")
+        selected_features = ["Recency", "Frequency", "MonetaryValue"]
+        numeric_features = selected_features.copy()
+        categorical_features = []
     else:
-        features_for_processing = features_df
+        print("RFM features not fully available. Using other detected numeric and categorical features.")
         
-    if features_for_processing.empty:
-        raise ValueError("No features available for preprocessing after selection.")
-
-    # 2. Preprocess Features
-    preprocessed_data, feature_names, preprocessor = preprocess_features(features_for_processing, numeric_features, categorical_features)
-    
-    if preprocessed_data is None or preprocessed_data.shape[0] == 0:
-        raise ValueError("Preprocessing failed or resulted in empty data.")
-
-    # 3. Find Optimal K
-    # Limit max_k based on user preference for fewer segments, e.g., max 6-8? Let's use 8 for now.
-    optimal_k = find_optimal_k(preprocessed_data, max_k=8)
-
-    # 4. Perform Segmentation
-    kmeans_model, labels = perform_segmentation(preprocessed_data, optimal_k)
-    
-    if kmeans_model is None:
-        raise ValueError("Clustering failed.")
-
-    # 5. Combine results
-    results_df = processed_df.copy() # Start with the data before feature selection/preprocessing
-    results_df['Segment'] = labels
-    
-    # Ensure customer ID is the first column if it exists
-    if customer_id_col and customer_id_col in results_df.columns:
-        cols = [customer_id_col] + [col for col in results_df.columns if col != customer_id_col]
-        results_df = results_df[cols]
+        # Filter for numeric features
+        numeric_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
         
+        # Filter for categorical features (with reasonable cardinality)
+        categorical_cols = []
+        for col in df.columns:
+            if pd.api.types.is_object_dtype(df[col]) or pd.api.types.is_categorical_dtype(df[col]):
+                # Check cardinality (too many unique values can cause dimensionality issues)
+                n_unique = df[col].nunique()
+                if n_unique < 20:  # Arbitrary threshold, adjust based on domain knowledge
+                    categorical_cols.append(col)
+                else:
+                    print(f"Skipping categorical feature {col} due to high cardinality ({n_unique}).")
+        
+        # Skip ID-like columns
+        id_keywords = ["id", "customer", "cust", "user", "member", "transaction", "order"]
+        
+        # Segment için uygun sayısal ve kategorik özellikleri seç
+        numeric_features = []
+        for col in numeric_cols:
+            col_lower = col.lower()
+            # ID-like kolonları atla
+            if any(keyword in col_lower for keyword in id_keywords):
+                continue
+            numeric_features.append(col)
+        
+        categorical_features = categorical_cols
+        
+        # Combine features for preprocessing
+        selected_features = numeric_features + categorical_features
+        
+        if not selected_features:
+            raise ValueError("No suitable features found for segmentation. Please check your data.")
+    
+    print(f"Selected features for segmentation: {selected_features}")
+    print(f"Numeric features: {numeric_features}")
+    print(f"Categorical features: {categorical_features}")
+    
+    # Check if customer ID column is present (needed for later)
+    customer_id_col = None
+    if "CustomerID" in df.columns:
+        customer_id_col = "CustomerID"
+    elif detected_cols.get("customer_id") and detected_cols["customer_id"] in df.columns:
+        customer_id_col = detected_cols["customer_id"]
+    else:
+        # Try to find a column with "id" in the name
+        id_cols = [col for col in df.columns if "id" in col.lower()]
+        if id_cols:
+            customer_id_col = id_cols[0]
+            print(f"Using {customer_id_col} as customer identifier.")
+        else:
+            print("Warning: Customer ID column not found or not selected. Segmentation will proceed without it.")
+    
+    # --- Preprocessing ---
+    # Create a preprocessing pipeline
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    
+    # Numeric transformation: scaling
+    numeric_transformer = Pipeline(steps=[
+        ('scaler', StandardScaler())
+    ])
+    
+    # Categorical transformation: one-hot encoding 
+    categorical_transformer = Pipeline(steps=[
+        ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ])
+    
+    # Combine transformers in a column transformer
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', numeric_transformer, numeric_features),
+            ('cat', categorical_transformer, categorical_features)
+        ],
+        remainder='drop'  # Drop other columns
+    )
+    
+    # Select features from the dataframe and apply preprocessing
+    X = df[selected_features].copy()
+    
+    # Apply preprocessing
+    X_processed = preprocessor.fit_transform(X)
+    print(f"Data shape after preprocessing: {X_processed.shape}")
+    
+    # --- Clustering ---
+    # Determine optimal k if not provided by user
+    if user_k:
+        k = user_k
+        print(f"Using user-specified k={k} for clustering")
+    else:
+        # Optimal k finding (you can adjust the max k range)
+        max_k = min(8, X_processed.shape[0] // 2)  # Reasonable upper limit
+        print(f"Finding optimal K in range 2 to {max_k}...")
+        k = find_optimal_k(X_processed, max_k=max_k)
+    
+    print(f"Selected Optimal K: {k}")
+    
+    # Apply KMeans clustering
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+    clusters = kmeans.fit_predict(X_processed)
+    
+    # Add cluster label to the original dataframe
+    df_result = df.copy()
+    df_result['Segment'] = clusters
+    
+    print(f"Segmentation complete. {k} clusters found.")
     print("--- Segmentation Pipeline Complete ---")
-    # Return the original data with segment labels, the model, preprocessor info, etc.
-    return results_df, kmeans_model, preprocessor, feature_names, optimal_k
+    
+    # Return the results along with the model and preprocessing info for later use
+    return df_result, kmeans, preprocessor, selected_features, k
+
+# --- Visualization Functions ---
+def create_segment_visualizations(df, segment_col='Segment', feature_cols=None):
+    """Creates enhanced visualizations for segment analysis"""
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from io import BytesIO
+    import base64
+    
+    visualizations = {}
+    
+    # If no feature columns are provided, use numeric columns
+    if not feature_cols:
+        feature_cols = df.select_dtypes(include=['number']).columns.tolist()
+        # Remove segment column if it's in feature_cols
+        if segment_col in feature_cols:
+            feature_cols.remove(segment_col)
+    
+    if len(feature_cols) < 2:
+        print("Not enough numeric features for visualization")
+        return visualizations
+    
+    # 1. Scatter Plot Matrix - Up to 4 dimensions
+    if len(feature_cols) >= 2:
+        plot_features = feature_cols[:min(4, len(feature_cols))]
+        fig, ax = plt.subplots(figsize=(10, 8))
+        scatter_data = df[plot_features + [segment_col]].copy()
+        pairs_grid = sns.pairplot(scatter_data, hue=segment_col, palette='viridis', 
+                                height=2.5, diag_kind='kde')
+        
+        buf = BytesIO()
+        pairs_grid.savefig(buf, format='png', bbox_inches='tight')
+        buf.seek(0)
+        visualizations['scatter_matrix'] = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close(pairs_grid.fig)
+    
+    # 2. 3D Scatter Plot - If at least 3 dimensions
+    if len(feature_cols) >= 3:
+        from mpl_toolkits.mplot3d import Axes3D
+        
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        scatter = ax.scatter(
+            df[feature_cols[0]], 
+            df[feature_cols[1]], 
+            df[feature_cols[2]],
+            c=df[segment_col], 
+            cmap='viridis', 
+            s=30, 
+            alpha=0.7
+        )
+        
+        ax.set_xlabel(feature_cols[0])
+        ax.set_ylabel(feature_cols[1])
+        ax.set_zlabel(feature_cols[2])
+        ax.set_title('3D Segment Visualization')
+        
+        # Add a colorbar
+        cbar = plt.colorbar(scatter)
+        cbar.set_label('Segment')
+        
+        buf = BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        buf.seek(0)
+        visualizations['scatter_3d'] = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close(fig)
+    
+    # 3. Cluster Centers Visualization (requires trained kmeans model)
+    # This would be implemented when kmeans model is passed to the function
+    
+    # 4. Segment Distribution
+    fig, ax = plt.subplots(figsize=(8, 6))
+    segment_counts = df[segment_col].value_counts().sort_index()
+    colors = plt.cm.viridis(np.linspace(0, 1, len(segment_counts)))
+    
+    bars = ax.bar(segment_counts.index.astype(str), segment_counts.values, color=colors)
+    ax.set_xlabel('Segment')
+    ax.set_ylabel('Müşteri Sayısı')
+    ax.set_title('Segment Dağılımı')
+    
+    # Add value labels on top of bars
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + 5,
+                f'{height}', ha='center', va='bottom')
+    
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    visualizations['segment_distribution'] = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close(fig)
+    
+    # 5. Feature Importance/Correlation Heatmap
+    if len(feature_cols) >= 2:
+        fig, ax = plt.subplots(figsize=(10, 8))
+        corr_matrix = df[feature_cols].corr()
+        mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
+        sns.heatmap(corr_matrix, mask=mask, annot=True, fmt=".2f", cmap='coolwarm', ax=ax)
+        ax.set_title('Feature Correlation Heatmap')
+        
+        buf = BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        buf.seek(0)
+        visualizations['correlation_heatmap'] = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close(fig)
+    
+    return visualizations
 
 # Example usage (integrated with data_processor output)
 if __name__ == '__main__':
